@@ -137,6 +137,8 @@ namespace Arm7BotTest
             Console.WriteLine("7Bot: x=" + arm.posD[0] + " y=" + arm.posD[1] + " z=" + arm.posD[2]);
             Console.WriteLine("7Bot: a=" + arm.posD[3] + " b=" + arm.posD[4] + " c=" + arm.posD[5]);
 
+            arm.setServoAngles(Arm7Bot.INITIAL_POSE);
+            while (!arm.isAllConverged) arm.Wait(100);
 
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();

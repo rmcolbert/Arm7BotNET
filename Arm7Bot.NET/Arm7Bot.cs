@@ -48,7 +48,7 @@ namespace Arm7BotNET
         private static readonly int[] INITIAL_SPEED = { 15, 20, 20, 30, 30, 30, 30 };
         private static readonly int[] RUNTIME_SPEED = { 80, 100, 100, 200, 200, 200, 200 };
 
-        private static readonly float[] INITIAL_POSE  = { 90, 115, 65, 90, 90, 90, 80 };
+        public static readonly float[] INITIAL_POSE  = { 90, 115, 65, 90, 90, 90, 80 };
         private static readonly int[] maxSpeedInit = { 110, 110, 110, 200, 200, 200, 200 };
 
         bool[] isFluentInit = { true, true, true, true, true, true, true };

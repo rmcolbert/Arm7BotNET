@@ -55,6 +55,9 @@ namespace Arm7Bot_IK_simple_XYcircle
                // while (!arm.isAllConverged) { arm.Wait(5); }  // wait motion converge
             }
 
+            arm.setServoAngles(Arm7Bot.INITIAL_POSE);
+            while (!arm.isAllConverged) arm.Wait(100);
+
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();
             arm.Close();

@@ -50,6 +50,9 @@ namespace Arm7Bot_IK_simple_Xsteps
                 if (Xtgt < -200) { forward = true; loop++; }
             }
 
+            arm.setServoAngles(Arm7Bot.INITIAL_POSE);
+            while (!arm.isAllConverged) arm.Wait(100);
+
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();
             arm.Close();
