@@ -9,8 +9,17 @@ namespace Arm7Bot_IK_simple_Xsteps
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Connecting to 7Bot");
-            arm = new Arm7Bot();
+            Console.WriteLine("Available ports: " + String.Join(", ", Arm7Bot.list()));
+            if (Arm7Bot.list().Length == 0)
+            {
+                Console.WriteLine("No ports available.  Please connect 7Bot.");
+                Console.WriteLine("Press any key to exit");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.WriteLine("Connecting to 7Bot on " + Arm7Bot.list()[0]);
+            arm = new Arm7Bot(Arm7Bot.list()[0]);
 
             Console.WriteLine("Setting 7Bot motors to SERVO mode");
             arm.setForceStatus((int)SERVO_MODE.NORMAL);

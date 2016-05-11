@@ -13,9 +13,8 @@ namespace Arm7BotTest
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Connecting to 7Bot on COM3");
-            arm = new Arm7Bot("COM3");
-            //arm = new Arm7Bot();
+            Console.WriteLine("Connecting to 7Bot");
+            arm = new Arm7Bot();
 
             ////////////////////////////////////////////////////////////////////////
             // 1- change force status

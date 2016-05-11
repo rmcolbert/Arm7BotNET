@@ -46,8 +46,9 @@ namespace Arm7BotNET
 
         public const int SERVO_NUM = 7;
         private static readonly int[] INITIAL_SPEED = { 15, 20, 20, 30, 30, 30, 30 };
+        private static readonly int[] RUNTIME_SPEED = { 80, 100, 100, 200, 200, 200, 200 };
 
-        private static readonly float[] posInit = { 90.0F, 115.0F, 65.0F, 90.0F, 90.0F, 90.0F, 80.0F };
+        private static readonly float[] INITIAL_POSE  = { 90, 115, 65, 90, 90, 90, 80 };
         private static readonly int[] maxSpeedInit = { 110, 110, 110, 200, 200, 200, 200 };
 
         bool[] isFluentInit = { true, true, true, true, true, true, true };
@@ -90,17 +91,15 @@ namespace Arm7BotNET
             _serialPort.StopBits = StopBits.One;
 
             for (int i = 0; i < SERVO_NUM; i++) {
-                posG[i] = posInit[i];
+                posG[i] = INITIAL_POSE[i];
                 maxSpeed[i] = maxSpeedInit[i];
                 isFluent[i] = isFluentInit[i];
                 isConverged[i] = false;
             }
 
-            if (autoStart)
-            {
-                this.delay = delay;
-                this.Open();
-            }
+            this.delay = delay;
+
+            if (autoStart) this.Open();
         }
 
         /// <summary>
@@ -109,7 +108,7 @@ namespace Arm7BotNET
         /// and automatically opens the specified serial connection.
         /// </summary>
         /// <param name="serialPortName">String specifying the name of the serial port. eg COM4</param>
-        public Arm7Bot(string serialPortName) : this(serialPortName, true, 2000) { }
+        public Arm7Bot(string serialPortName) : this(serialPortName, true, 1000) { }
 
         /// <summary>
         /// Creates an instance of the Arm7Bot object using default arguments.
@@ -117,7 +116,7 @@ namespace Arm7BotNET
         /// default baud rate (115200), and a reboot delay (2 seconds).
         /// and automatically opens the specified serial connection.
         /// </summary>
-        public Arm7Bot() : this(Arm7Bot.list().ElementAt(list().Length - 1), true, 2000) { }
+        public Arm7Bot() : this(Arm7Bot.list().ElementAt(list().Length - 1), true, 1000) { }
 
         /// <summary>
         /// Opens the serial port connection, should it be required. By default the port is
@@ -128,17 +127,21 @@ namespace Arm7BotNET
             _serialPort.Open();
             Wait(delay);
 
-            setForceStatus((int)SERVO_MODE.NORMAL);
-
-            //setInitialSpeed();
-            //setInitialPosition();
-            //Wait(3000);
-
+            // Start serial reader thread
             if (readThread == null)
             {
                 readThread = new Thread(processInput);
                 readThread.Start();
             }
+
+            setForceStatus((int)SERVO_MODE.NORMAL);
+
+            setInitialSpeed();
+            setServoAngles(posG);
+            Wait(50);
+            while (!isAllConverged) { Wait(200); }  // wait motion converge
+
+            setRuntimeSpeed();
         }
 
         /// <summary>
@@ -146,8 +149,12 @@ namespace Arm7BotNET
         /// </summary>
         public void Close()
         {
-            readThread.Join(500);
-            readThread = null;
+            if (readThread != null)
+            {
+                readThread.Join(500);
+                readThread = null;
+            }
+
             _serialPort.Close();
         }
 
@@ -185,7 +192,6 @@ namespace Arm7BotNET
         {
             Thread.Sleep(value);
         }
-
 
         public void reqStoredPose(int poseNum)
         {
@@ -262,9 +268,11 @@ namespace Arm7BotNET
             Boolean[] fluentEnabled = { true, true, true, true, true, true, true };
             setSpeed(fluentEnabled, INITIAL_SPEED); // set speed
         }
-        public void setInitialPosition()
+
+        public void setRuntimeSpeed()
         {
-            setServoAngles(posInit);
+            Boolean[] fluentEnabled = { true, true, true, true, true, true, true };
+            setSpeed(fluentEnabled, RUNTIME_SPEED); // set speed
         }
 
         private void sendMoveCommand(int Command, int[] sendData)
