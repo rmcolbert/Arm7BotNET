@@ -67,6 +67,8 @@ namespace Arm7BotNET
         private const int BAUDRATE = 115200;
         private int delay;
 
+        public bool deviceFound = false;
+
         private int[] storedInputData = new int[MAX_DATA_BYTES];
 
         private int majorVersion = 0;
@@ -75,22 +77,75 @@ namespace Arm7BotNET
         private object locker = new object();
 
         /// <summary>
-        /// 
+        /// Creates an instance of the Arm7Bot object, based on a user-specified serial port and reboot delay (1 seconds)
         /// </summary>
         /// <param name="serialPortName">String specifying the name of the serial port. eg COM4</param>
-        /// <param name="autoStart">Determines whether the serial port should be opened automatically.
-        ///                     use the Open() method to open the connection manually.</param>
         /// <param name="delay">Time delay that may be required to allow some Arm7Bot models
         ///                     to reboot after opening a serial connection. The delay will only activate
         ///                     when autoStart is true.</param>
-        public Arm7Bot(string serialPortName, bool autoStart, int delay)
+        public Arm7Bot(string serialPortName, int delay)
         {
+            CommSetup(serialPortName, delay);
+        }
+
+        /// <summary>
+        /// Creates an instance of the Arm7Bot object, based on a user-specified serial port.
+        /// Assumes default value for reboot delay (1 seconds)
+        /// </summary>
+        /// <param name="serialPortName">String specifying the name of the serial port. eg COM4</param>
+        public Arm7Bot(string serialPortName) : this(serialPortName, 1000) { }
+
+        /// <summary>
+        /// Creates an instance of the Arm7Bot object using default arguments.
+        /// Checks all serial ports on the machine using the default reboot delay (1 seconds).
+        /// </summary>
+        public Arm7Bot()
+        {
+            int delay = 1000;
+
+            //Console.WriteLine("Available ports: " + String.Join(", ", Arm7Bot.list()));
+            if (Arm7Bot.list().Length == 0)
+            {
+                Console.WriteLine("No ports available.  Please connect 7Bot.");
+                Console.WriteLine("Press any key to exit");
+                Console.ReadKey();
+                return;
+            }
+
+            for (int i = 0; i < Arm7Bot.list().Length; i++)
+            {
+                //Console.WriteLine("Attempting to connect to 7Bot on " + Arm7Bot.list()[i]);
+                CommSetup(Arm7Bot.list()[i], delay);
+
+                if (this.deviceFound)
+                {
+                    Console.WriteLine("Connected to 7Bot on " + Arm7Bot.list()[i]);
+                    break;
+                }
+                else
+                    try { this.Close(); } catch { }
+            }
+
+            if (!this.deviceFound)
+            {
+                Console.WriteLine("7Bot not found on any available ports.");
+                Console.WriteLine("Press any key to exit");
+                Console.ReadKey();
+                return;
+            }
+        }
+
+        private void CommSetup(string serialPortName, int delay)
+        {
+            deviceFound = false;
             _serialPort = new SerialPort(serialPortName, BAUDRATE);
             _serialPort.DataBits = 8;
             _serialPort.Parity = Parity.None;
             _serialPort.StopBits = StopBits.One;
+            _serialPort.WriteTimeout = 1000; // If it takes more than 1 second to write data to the device, we're doing something wrong.
 
-            for (int i = 0; i < SERVO_NUM; i++) {
+            for (int i = 0; i < SERVO_NUM; i++)
+            {
                 posG[i] = INITIAL_POSE[i];
                 maxSpeed[i] = maxSpeedInit[i];
                 isFluent[i] = isFluentInit[i];
@@ -99,33 +154,17 @@ namespace Arm7BotNET
 
             this.delay = delay;
 
-            if (autoStart) this.Open();
+            this.Open();
         }
-
-        /// <summary>
-        /// Creates an instance of the Arm7Bot object, based on a user-specified serial port.
-        /// Assumes default values for baud rate (115200) and reboot delay (2 seconds)
-        /// and automatically opens the specified serial connection.
-        /// </summary>
-        /// <param name="serialPortName">String specifying the name of the serial port. eg COM4</param>
-        public Arm7Bot(string serialPortName) : this(serialPortName, true, 1000) { }
-
-        /// <summary>
-        /// Creates an instance of the Arm7Bot object using default arguments.
-        /// Assumes the Arm7Bot is connected as the HIGHEST serial port on the machine,
-        /// default baud rate (115200), and a reboot delay (2 seconds).
-        /// and automatically opens the specified serial connection.
-        /// </summary>
-        public Arm7Bot() : this(Arm7Bot.list().ElementAt(list().Length - 1), true, 1000) { }
 
         /// <summary>
         /// Opens the serial port connection, should it be required. By default the port is
         /// opened when the object is first created.
         /// </summary>
-        public void Open()
+        public bool Open()
         {
-            _serialPort.Open();
-            Wait(delay);
+            try { _serialPort.Open(); }
+            catch {  return false; }
 
             // Start serial reader thread
             if (readThread == null)
@@ -134,6 +173,39 @@ namespace Arm7BotNET
                 readThread.Start();
             }
 
+            Wait(delay);
+
+            if (detect7Bot())
+            {
+                Initialize();
+                return true;
+            }
+            else { return false; }
+        }
+
+        private bool detect7Bot()
+        {
+            try
+            {
+                byte[] message = new byte[3];
+                message[0] = (byte)COMMAND.START;
+                message[1] = (byte)0xF2;
+                message[2] = (byte)(0);
+                _serialPort.Write(message, 0, message.Length);
+                Wait(100);
+            } catch { return false; }
+
+            for (int j=0; j< 5; j++)
+            {
+                if (this.deviceFound) break;
+                Wait(10);
+            }
+
+            return deviceFound;
+        }
+
+        public void Initialize()
+        {
             setForceStatus((int)SERVO_MODE.NORMAL);
 
             setInitialSpeed();
@@ -411,14 +483,6 @@ namespace Arm7BotNET
             sendMoveCommand((int)COMMAND.SETIK3, sendData);
         }
 
-
-
-
-
-
-
-
-
         bool beginFlag = false;
         int instruction = 0;
         int cnt = 0;
@@ -450,7 +514,8 @@ namespace Arm7BotNET
                                             this.beginFlag = false;
                                             this.instruction = 0;
                                             this.cnt = 0;
-                                            Console.WriteLine("ID:" + storedInputData[0] + "  Data:" + storedInputData[1] );
+                                            //Console.WriteLine("ID:" + storedInputData[0] + "  Data:" + storedInputData[1]);
+                                            if ((storedInputData[0] == 0) && (this.storedInputData[1] == 7)) this.deviceFound = true;
                                         }
                                         break;
 

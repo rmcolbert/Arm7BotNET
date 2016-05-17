@@ -13,8 +13,16 @@ namespace Arm7BotTest
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Connecting to 7Bot");
+            // The Arm7Bot constructor with no parameters checks all COM ports for a 7Bot controller.
+            Console.WriteLine("Detecting 7Bot");
             arm = new Arm7Bot();
+
+            // The Arm7Bot constrcutor accepts up to two possible parameters, SerialPort name and reboot delay.
+            // arm = new Arm7Bot("COM5");
+            // arm = new Arm7Bot("COM5", 3000);
+
+            // If we didn't detect a 7Bot, exit.
+            if (!arm.deviceFound) return;
 
             ////////////////////////////////////////////////////////////////////////
             // 1- change force status
@@ -145,11 +153,6 @@ namespace Arm7BotTest
             arm.Close();
         }
 
-        private static double Radians(double angle)
-        {
-            return Math.PI * angle / 180.0;
-        }
-
         private static void IK_simple_XY()
         {
             int Xtgt = 0, Ytgt = 160, Ztgt = 80;
@@ -166,7 +169,7 @@ namespace Arm7BotTest
                 r += (float)1.0;
                 if (r > 720) { r = 0; arm.Wait(5000); loop++; } // 2 circles and 10s pause
 
-                float rad = (float)Radians(r + 180);
+                float rad = (float)Arm7Bot.Radians(r + 180);
                 Xtgt = (int)(0 + Math.Sin(rad) * 60);
                 Ytgt = (int)(240 + Math.Cos(rad) * 60);
 

@@ -9,17 +9,16 @@ namespace Arm7Bot_IK_simple_XYZrandom
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Available ports: " + String.Join(", ", Arm7Bot.list()));
-            if (Arm7Bot.list().Length == 0)
-            {
-                Console.WriteLine("No ports available.  Please connect 7Bot.");
-                Console.WriteLine("Press any key to exit");
-                Console.ReadKey();
-                return;
-            }
+            // The Arm7Bot constructor with no parameters checks all COM ports for a 7Bot controller.
+            Console.WriteLine("Detecting 7Bot");
+            arm = new Arm7Bot();
 
-            Console.WriteLine("Connecting to 7Bot on " + Arm7Bot.list()[0]);
-            arm = new Arm7Bot(Arm7Bot.list()[0]);
+            // The Arm7Bot constrcutor accepts up to two possible parameters, SerialPort name and reboot delay.
+            // arm = new Arm7Bot("COM5");
+            // arm = new Arm7Bot("COM5", 3000);
+
+            // If we didn't detect a 7Bot, exit.
+            if (!arm.deviceFound) return;
 
             Console.WriteLine("Setting 7Bot motors to SERVO mode");
             arm.setForceStatus((int)SERVO_MODE.NORMAL);
